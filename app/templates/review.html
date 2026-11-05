@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}每日复盘 - Finance Agent{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>每日复盘</h1>
+    <span class="page-sub">{{ summary.today_trades_count }} 笔今日交易</span>
+</div>
+
+<div class="cards-row">
+    <div class="card">
+        <div class="label">总资产</div>
+        <div class="value">{{ '%.2f' % summary.total_assets if summary.total_assets is number else '—' }}</div>
+    </div>
+    <div class="card">
+        <div class="label">现金</div>
+        <div class="value">{{ '%.2f' % summary.cash if summary.cash is number else '—' }}</div>
+    </div>
+    <div class="card">
+        <div class="label">持仓市值</div>
+        <div class="value">{{ '%.2f' % summary.market_value if summary.market_value is number else '—' }}</div>
+    </div>
+    <div class="card">
+        <div class="label">总盈亏</div>
+        <div class="value {{ 'up' if summary.total_pnl and summary.total_pnl > 0 else 'down' if summary.total_pnl and summary.total_pnl < 0 else '' }}">{{ '%+.2f' % summary.total_pnl if summary.total_pnl is number else '—' }} ({{ '%.2f' % summary.total_pnl_pct if summary.total_pnl_pct is number else '—' }}%)</div>
+    </div>
+    <div class="card">
+        <div class="label">今日交易</div>
+        <div class="value">{{ summary.today_trades_count }}</div>
+    </div>
+</div>
+
+<h2>AI 复盘报告</h2>
+<div class="card">
+    {% if archived %}
+    <div class="ai-result">{{ archived }}</div>
+    {% elif ai_enabled %}
+    <form method="post" action="/review/generate">
+        <p class="dim">基于账户变动、持仓异动与板块数据生成复盘,约 5-10 秒。</p>
+        <button type="submit">🤖 生成今日复盘</button>
+    </form>
+    {% else %}
+    <p class="dim">⚠️ AI 未启用(缺少 LLM_API_KEY),无法生成 AI 复盘。账户数据已展示在上方。</p>
+    {% endif %}
+</div>
+{% endblock %}

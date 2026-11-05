@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}政策监控 - Finance Agent{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>政策监控</h1>
+    <span class="page-sub">政策新闻 + 板块关联分析</span>
+</div>
+
+<h2>政策日报</h2>
+<div class="card">
+    {% if brief and '失败' not in brief and '不可用' not in brief %}
+    <pre style="white-space:pre-wrap;">{{ brief }}</pre>
+    {% else %}
+    <p class="dim">{{ brief if brief else '暂无政策日报(数据源未返回)' }}</p>
+    {% endif %}
+</div>
+
+<h2>政策新闻</h2>
+<table>
+    <thead><tr><th>时间</th><th>来源</th><th>标题</th><th>关联板块</th><th>情绪</th></tr></thead>
+    <tbody>
+    {% for n in news %}
+    {% set rel = n.relation if n.relation else {'sectors': [], 'sentiment': '中性'} %}
+    <tr>
+        <td class="dim">{{ n.time or '—' }}</td>
+        <td>{{ n.source or '—' }}</td>
+        <td>{% if n.url %}<a href="{{ n.url }}" target="_blank">{{ n.title }}</a>{% else %}{{ n.title }}{% endif %}</td>
+        <td class="dim">{{ rel.sectors | join(', ') if rel.sectors else '—' }}</td>
+        <td class="{{ 'up' if rel.sentiment == '利好' else 'down' if rel.sentiment == '利空' else '' }}">{{ rel.sentiment or '中性' }}</td>
+    </tr>
+    {% else %}
+    <tr><td colspan="5" class="empty-state" style="padding:32px;">暂无政策新闻(可能非交易日,或数据源未返回)。</td></tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

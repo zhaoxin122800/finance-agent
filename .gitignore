@@ -1,0 +1,46 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.eggs/
+build/
+dist/
+
+# 虚拟环境
+.venv/
+venv/
+env/
+ENV/
+
+# uv
+.uv-cache/
+
+# 运行时状态（首次运行自动生成）
+data/
+!data/.gitkeep
+
+# 密钥与本地配置
+.env
+.env.local
+
+# 编辑器 / 系统
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+# Windows 保留设备名(curl -o nul 重定向时被误创建)
+nul
+
+# 日志
+*.log
+logs/
+
+# 测试与覆盖率
+.pytest_cache/
+.coverage
+htmlcov/

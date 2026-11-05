@@ -1,0 +1,231 @@
+{% extends "base.html" %}
+{% block title %}自选股 - Finance Agent{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>自选股监控</h1>
+    <span class="page-sub" id="refresh-indicator">实时行情 · 30 秒自动刷新</span>
+</div>
+
+<form class="card" method="post" action="/watchlist/api/add" style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+    <input name="code" placeholder="代码 如 600789" required style="width:130px;">
+    <input name="name" placeholder="名称(可选)" style="width:140px;">
+    <input name="up_alert_pct" type="number" step="0.1" placeholder="涨提醒%" style="width:110px;">
+    <input name="down_alert_pct" type="number" step="0.1" placeholder="跌提醒%(负)" style="width:130px;">
+    <button type="submit">+ 添加自选</button>
+</form>
+
+<table id="watchlist-table">
+    <thead>
+        <tr>
+            <th>代码</th><th>名称</th><th class="num">现价</th><th class="num">涨跌幅</th>
+            <th class="num">PE</th><th class="num">市值(亿)</th><th class="num">换手率</th>
+            <th>提醒</th><th>操作</th>
+        </tr>
+    </thead>
+    <tbody>
+    {% for r in rows %}
+        <tr class="{{ 'alert-row' if r.alert else '' }}">
+            <td><a href="/analyst/{{ r.code }}">{{ r.code }}</a></td>
+            <td>{{ r.name }}</td>
+            <td class="num">{{ r.price if r.price is not none else '—' }}</td>
+            <td class="num {{ 'up' if (r.change_pct or 0) > 0 else 'down' if (r.change_pct or 0) < 0 else '' }}">
+                {{ '%+.2f' % r.change_pct if r.change_pct is not none else '—' }}%
+            </td>
+            <td class="num dim">{{ '%.1f' % r.pe_ttm if r.pe_ttm else '—' }}</td>
+            <td class="num dim">{{ '%.0f' % r.mcap_yi if r.mcap_yi else '—' }}</td>
+            <td class="num dim">{{ '%.2f' % r.turnover_pct if r.turnover_pct else '—' }}</td>
+            <td>
+                {% if r.alert == 'up' %}<span class="up">🔺 涨超 {{ r.up_alert_pct }}%{% elif r.alert == 'down' %}<span class="down">🔻 跌破 {{ r.down_alert_pct }}%{% else %}—{% endif %}</span>
+            </td>
+            <td>
+                <form method="post" action="/watchlist/api/remove" style="display:inline">
+                    <input type="hidden" name="code" value="{{ r.code }}">
+                    <button type="submit" class="btn-danger" style="padding:3px 10px;">删</button>
+                </form>
+            </td>
+        </tr>
+    {% else %}
+        <tr><td colspan="9" class="empty-state" style="padding:32px;">暂无自选股,用上方表单添加(如 600789)。</td></tr>
+    {% endfor %}
+    </tbody>
+</table>
+
+<script>
+// 30s 轮询刷新行情(设计 §4.1)
+async function refreshQuotes() {
+    try {
+        const resp = await fetch('/watchlist/api/quotes');
+        const rows = await resp.json();
+        const tbody = document.querySelector('#watchlist-table tbody');
+        if (!rows || rows.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="9" class="empty-state" style="padding:32px;">暂无自选股,用上方表单添加(如 600789)。</td></tr>';
+            return;
+        }
+        tbody.innerHTML = rows.map(r => {
+            const cp = r.change_pct;
+            const cpClass = (cp||0) > 0 ? 'up' : (cp||0) < 0 ? 'down' : '';
+            const cpText = cp !== null && cp !== undefined ? `${cp > 0 ? '+' : ''}${cp.toFixed(2)}%` : '—';
+            const pe = r.pe_ttm ? r.pe_ttm.toFixed(1) : '—';
+            const mcap = r.mcap_yi ? r.mcap_yi.toFixed(0) : '—';
+            const turnover = r.turnover_pct ? r.turnover_pct.toFixed(2) : '—';
+            const alertCell = r.alert === 'up' ? `<span class="up">🔺 涨超 ${r.up_alert_pct}%</span>`
+                            : r.alert === 'down' ? `<span class="down">🔻 跌破 ${r.down_alert_pct}%</span>`
+                            : '—';
+            const rowClass = r.alert ? 'alert-row' : '';
+            const priceText = r.price !== null && r.price !== undefined ? r.price : '—';
+            return `<tr class="${rowClass}">
+                <td><a href="/analyst/${r.code}">${r.code}</a></td>
+                <td>${r.name}</td>
+                <td class="num">${priceText}</td>
+                <td class="num ${cpClass}">${cpText}</td>
+                <td class="num dim">${pe}</td>
+                <td class="num dim">${mcap}</td>
+                <td class="num dim">${turnover}</td>
+                <td>${alertCell}</td>
+                <td>
+                    <form method="post" action="/watchlist/api/remove" style="display:inline">
+                        <input type="hidden" name="code" value="${r.code}">
+                        <button type="submit" class="btn-danger" style="padding:3px 10px;">删</button>
+                    </form>
+                </td>
+            </tr>`;
+        }).join('');
+        const ind = document.getElementById('refresh-indicator');
+        if (ind) { const t = new Date(); ind.textContent = `已刷新 ${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}:${String(t.getSeconds()).padStart(2,'0')}`; }
+    } catch (e) { console.warn('刷新失败', e); }
+}
+setInterval(refreshQuotes, 30000);
+</script>
+
+<h2 style="margin-top:32px;">🔍 发现股票</h2>
+<div class="card">
+    <div style="display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap; align-items:center;">
+        <button class="btn-ghost" onclick="loadMarket()">🌐 全市场选股器</button>
+        <button class="btn-ghost" onclick="loadHotStocks()">📈 当日龙虎榜</button>
+        <button class="btn-ghost" onclick="loadSectors()">🏭 板块排名</button>
+    </div>
+    <div id="screener-result"></div>
+</div>
+
+<script>
+async function loadHotStocks() {
+    const box = document.getElementById('screener-result');
+    box.innerHTML = '<p class="dim">加载龙虎榜...</p>';
+    try {
+        const r = await fetch('/watchlist/api/hot_stocks');
+        const data = await r.json();
+        const stocks = data.stocks || [];
+        if (stocks.length === 0) {
+            box.innerHTML = '<p class="dim">今日暂无龙虎榜数据(可能非交易日,或数据未更新)。</p>';
+            return;
+        }
+        box.innerHTML = `<p class="dim" style="margin-bottom:8px;">${data.date} 龙虎榜 · ${data.total_records} 只上榜</p>` +
+            '<table><thead><tr><th>代码</th><th>名称</th><th class="num">收盘</th><th class="num">涨跌幅</th><th class="num">净买入(万)</th><th class="num">换手率</th><th>操作</th></tr></thead><tbody>' +
+            stocks.map(s => `<tr>
+                <td><a href="/analyst/${s.code}">${s.code}</a></td>
+                <td>${s.name}</td>
+                <td class="num">${s.close || '—'}</td>
+                <td class="num ${(s.change_pct||0)>0?'up':'down'}">${s.change_pct!==null&&s.change_pct!==undefined?(s.change_pct>0?'+':'')+s.change_pct.toFixed(2)+'%':'—'}</td>
+                <td class="num">${s.net_buy_wan!==null&&s.net_buy_wan!==undefined?(s.net_buy_wan/10000).toFixed(0)+'万':'—'}</td>
+                <td class="num dim">${s.turnover_pct?s.turnover_pct.toFixed(2):'—'}</td>
+                <td><form method="post" action="/watchlist/api/add" style="display:inline">
+                    <input type="hidden" name="code" value="${s.code}">
+                    <input type="hidden" name="name" value="${s.name}">
+                    <button type="submit" style="padding:3px 10px;">+ 自选</button>
+                </form></td>
+            </tr>`).join('') +
+            '</tbody></table>';
+    } catch (e) { box.innerHTML = '<p class="dim">加载失败: ' + e.message + '</p>'; }
+}
+
+async function loadSectors() {
+    const box = document.getElementById('screener-result');
+    box.innerHTML = '<p class="dim">加载板块排名...</p>';
+    try {
+        const r = await fetch('/watchlist/api/sectors');
+        const sectors = await r.json();
+        if (sectors.length === 0) {
+            box.innerHTML = '<p class="dim">暂无板块数据。</p>';
+            return;
+        }
+        box.innerHTML = '<table><thead><tr><th>板块</th><th class="num">涨跌幅</th><th>领涨股</th></tr></thead><tbody>' +
+            sectors.slice(0, 20).map(s => `<tr>
+                <td>${s.name}</td>
+                <td class="num ${(s.change_pct||0)>0?'up':'down'}">${s.change_pct!==null&&s.change_pct!==undefined?(s.change_pct>0?'+':'')+(s.change_pct||0).toFixed(2)+'%':'—'}</td>
+                <td class="dim">${s.leader_stock || '—'}</td>
+            </tr>`).join('') +
+            '</tbody></table>';
+    } catch (e) { box.innerHTML = '<p class="dim">加载失败: ' + e.message + '</p>'; }
+}
+
+// 全市场选股器(沪深 A 股,实时行情,排序/搜索/分页)
+let _marketState = { page: 1, sort: 'changepercent', asc: false, query: '' };
+
+async function loadMarket(page) {
+    if (page) _marketState.page = page;
+    const box = document.getElementById('screener-result');
+    box.innerHTML = '<p class="dim">加载全市场...</p>';
+    // 控件栏
+    const sortOpts = {changepercent:'涨跌幅', turnoverratio:'换手率', mktcap:'市值', per:'PE', pb:'PB', trade:'现价'};
+    const sortSel = Object.entries(sortOpts).map(([k,v]) => `<option value="${k}" ${k===_marketState.sort?'selected':''}>${v}</option>`).join('');
+    box.innerHTML = `
+        <div class="toolbar" style="margin-bottom:10px;">
+            <input id="mk-query" placeholder="搜代码/名称(如 600460 / 士兰微)" value="${_marketState.query}" style="width:220px;" oninput="debounceSearch()" onkeyup="if(event.key==='Enter'){doSearch();}">
+            <button class="btn-ghost" onclick="doSearch()">🔍 搜索</button>
+            <select id="mk-sort" onchange="_marketState.sort=this.value;_marketState.page=1;loadMarket();">${sortSel}</select>
+            <label class="dim"><input type="checkbox" id="mk-asc" ${_marketState.asc?'checked':''} onchange="_marketState.asc=this.checked;loadMarket();"> 升序</label>
+            <span class="dim" style="margin-left:auto;" id="mk-info"></span>
+        </div>
+        <p class="dim" style="margin:-4px 0 8px; font-size:12px;">💡 输入代码或名称后按回车/点搜索,支持拼音首字母。留空则按涨幅/换手率浏览榜单。</p>
+        <div id="mk-table">加载中...</div>
+    `;
+    try {
+        const params = new URLSearchParams({page:_marketState.page, num:50, sort:_marketState.sort, asc:_marketState.asc, query:_marketState.query});
+        const r = await fetch('/watchlist/api/market?' + params);
+        const data = await r.json();
+        const stocks = data.stocks || [];
+        const info = document.getElementById('mk-info');
+        info.textContent = `第 ${data.page} 页 · 本页 ${data.total_returned} 只${_marketState.query?' · 搜索:"'+_marketState.query+'"':''}`;
+        const tb = document.getElementById('mk-table');
+        if (stocks.length === 0) { tb.innerHTML = '<p class="dim">无匹配股票。</p>'; return; }
+        tb.innerHTML = '<table><thead><tr><th>代码</th><th>名称</th><th class="num">现价</th><th class="num">涨跌幅</th><th class="num">PE</th><th class="num">市值(亿)</th><th class="num">换手率</th><th>操作</th></tr></thead><tbody>' +
+            stocks.map(s => `<tr>
+                <td><a href="/analyst/${s.code}">${s.code}</a></td>
+                <td>${s.name}</td>
+                <td class="num">${s.price?s.price.toFixed(2):'—'}</td>
+                <td class="num ${(s.change_pct||0)>0?'up':'down'}">${s.change_pct!==0?(s.change_pct>0?'+':'')+s.change_pct.toFixed(2)+'%':'—'}</td>
+                <td class="num dim">${s.pe?s.pe.toFixed(1):'—'}</td>
+                <td class="num dim">${s.market_cap?s.market_cap.toFixed(0):'—'}</td>
+                <td class="num dim">${s.turnover_ratio?s.turnover_ratio.toFixed(2):'—'}</td>
+                <td><form method="post" action="/watchlist/api/add" style="display:inline">
+                    <input type="hidden" name="code" value="${s.code}">
+                    <input type="hidden" name="name" value="${s.name}">
+                    <button type="submit" style="padding:3px 10px;">+ 自选</button>
+                </form></td>
+            </tr>`).join('') + '</tbody></table>';
+        // 分页
+        tb.innerHTML += `<div style="margin-top:10px; display:flex; gap:8px;">
+            <button class="btn-ghost" ${_marketState.page<=1?'disabled':''} onclick="loadMarket(${_marketState.page-1})">上一页</button>
+            <span class="dim" style="line-height:30px;">第 ${_marketState.page} 页</span>
+            <button class="btn-ghost" onclick="loadMarket(${_marketState.page+1})">下一页</button>
+        </div>`;
+    } catch (e) { document.getElementById('mk-table').innerHTML = '<p class="dim">加载失败: ' + e.message + '</p>'; }
+}
+
+// 搜索触发:输入框值 → 更新 state → 重新加载
+function doSearch() {
+    const input = document.getElementById('mk-query');
+    if (input) {
+        _marketState.query = input.value.trim();
+        _marketState.page = 1;
+        loadMarket();
+    }
+}
+// 防抖:输入时 400ms 后自动搜(不必按回车)
+let _searchTimer = null;
+function debounceSearch() {
+    clearTimeout(_searchTimer);
+    _searchTimer = setTimeout(doSearch, 400);
+}
+</script>
+{% endblock %}

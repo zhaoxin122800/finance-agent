@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block title %}Finance Agent · A股助手{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>Finance Agent</h1>
+    <span class="page-sub">自用本地 A 股助手 · 数据来自免费行情源,仅供参考</span>
+</div>
+
+<div class="ai-status">
+    {% if ai_enabled %}
+        <strong style="color: var(--ai)">● AI 已启用</strong> —— 个股解读 / 每日复盘可用
+    {% else %}
+        <strong style="color: var(--warn)">● AI 未启用</strong> —— 行情/账户/回测等非 AI 功能正常;配置 <code>LLM_API_KEY</code> 后解锁 AI 解读与复盘
+    {% endif %}
+</div>
+
+{% if northbound %}
+{% set nb_cls = 'var(--up)' if northbound.total > 0 else 'var(--down)' if northbound.total < 0 else 'var(--border)' %}
+{% set nb_val_cls = 'up' if northbound.total > 0 else 'down' if northbound.total < 0 else '' %}
+{% set hgt_cls = 'up' if northbound.hgt > 0 else 'down' if northbound.hgt < 0 else '' %}
+{% set sgt_cls = 'up' if northbound.sgt > 0 else 'down' if northbound.sgt < 0 else '' %}
+<div class="cards-row" style="margin: 16px 0;">
+    <div class="card" style="border-left: 3px solid {{ nb_cls }};">
+        <div class="label">🌐 北向资金(沪深股通)</div>
+        <div class="value {{ nb_val_cls }}">{{ '%+.2f' % northbound.total }} 亿</div>
+    </div>
+    <div class="card">
+        <div class="label">沪股通</div>
+        <div class="value {{ hgt_cls }}">{{ '%+.2f' % northbound.hgt }} 亿</div>
+    </div>
+    <div class="card">
+        <div class="label">深股通</div>
+        <div class="value {{ sgt_cls }}">{{ '%+.2f' % northbound.sgt }} 亿</div>
+    </div>
+    <div class="card">
+        <div class="label">更新时间</div>
+        <div class="value dim" style="font-size: 16px;">{{ northbound.time or '—' }}</div>
+    </div>
+</div>
+<p class="dim" style="margin: -8px 0 12px; font-size: 12px;">💡 北向资金是外资动向信号:大幅流入偏多,大幅流出谨慎。数据来自同花顺。</p>
+{% endif %}
+
+{% if telegraphs %}
+<h2>📡 财联社 7×24 电报</h2>
+<div class="card" style="padding: 0; overflow: hidden;">
+    <ul style="list-style:none; margin:0; padding:0; max-height: 320px; overflow-y: auto;">
+    {% for t in telegraphs %}
+        <li style="padding: 8px 14px; border-bottom: 1px solid var(--border-muted); font-size: 13px; line-height: 1.6;">
+            <div style="display:flex; gap: 8px; align-items: flex-start;">
+                {% if t.level == 'A' %}
+                <span style="background: var(--down); color: #fff; font-size: 10px; padding: 1px 5px; border-radius: 3px; flex-shrink:0; margin-top: 2px;">重磅</span>
+                {% elif t.level == 'B' %}
+                <span style="background: var(--accent); color: #fff; font-size: 10px; padding: 1px 5px; border-radius: 3px; flex-shrink:0; margin-top: 2px;">重要</span>
+                {% endif %}
+                <span class="dim" style="font-size: 11px; flex-shrink:0; margin-top: 2px; font-variant-numeric: tabular-nums;">{{ t.time }}</span>
+                <span style="flex:1;">{{ t.content }}</span>
+                {% if t.shareurl %}<a href="{{ t.shareurl }}" target="_blank" class="dim" style="font-size: 11px; flex-shrink:0;">原文</a>{% endif %}
+            </div>
+            {% if t.stocks %}
+            <div style="margin-left: {% if t.level in ['A','B'] %}52px{% else %}78px{% endif %}; margin-top: 4px;">
+                {% for s in t.stocks %}
+                <span style="display:inline-block; background: var(--bg-alt); padding: 1px 6px; border-radius: 3px; font-size: 11px; margin-right: 4px;">{{ s.name }}{% if s.code %} {{ s.code }}{% endif %}</span>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </li>
+    {% endfor %}
+    </ul>
+</div>
+<p class="dim" style="margin: 6px 0 12px; font-size: 12px;">💡 实时财经快讯,A 级为重磅消息。数据来自财联社。</p>
+{% endif %}
+
+<h2>功能面板</h2>
+<div class="cards-row" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));">
+    {% set panels = [
+        {'tab':'watchlist','name':'自选股监控','desc':'实时行情 · 涨跌提醒阈值','icon':'📊','avail':'实时'},
+        {'tab':'analyst','name':'个股分析','desc':'K线 · 量能 · 资金流 · AI解读','icon':'🔬','avail':'AI'},
+        {'tab':'account','name':'虚拟账户','desc':'1000 元模拟账户买卖','icon':'💼','avail':'1000 元'},
+        {'tab':'review','name':'每日复盘','desc':'盈亏 · 持仓异动 · AI复盘','icon':'📋','avail':'AI'},
+        {'tab':'policy','name':'政策监控','desc':'政策新闻 · 板块关联','icon':'📜','avail':'实时'},
+        {'tab':'report','name':'研报提炼','desc':'PDF/网页 → 评级/目标价','icon':'📑','avail':'文本'},
+        {'tab':'backtest','name':'策略回测','desc':'均线/放量 · 夏普/回撤','icon':'📈','avail':'3 策略'},
+        {'tab':'risk','name':'风险预警','desc':'跌幅/放量/破位触发','icon':'🚨','avail':'规则'}
+    ] %}
+    {% for p in panels %}
+    <a href="/{{ p.tab }}" class="card" style="text-decoration:none; color:inherit; display:block; transition: border-color .12s, transform .12s;"
+       onmouseover="this.style.borderColor='var(--accent)'; this.style.transform='translateY(-1px)'"
+       onmouseout="this.style.borderColor='var(--border-muted)'; this.style.transform='none'">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
+            <span style="font-size:20px;">{{ p.icon }}</span>
+            <span class="dim" style="font-size:11px;">{{ p.avail }}</span>
+        </div>
+        <div style="font-weight:600; font-size:14px; margin-bottom:3px;">{{ p.name }}</div>
+        <div class="dim" style="font-size:12px; line-height:1.4;">{{ p.desc }}</div>
+    </a>
+    {% endfor %}
+</div>
+
+<p class="dim" style="margin-top:24px;">数据源:新浪 / 搜狐免费接口 · 实时行情可能有延迟 · 本工具仅供学习研究,不构成投资建议</p>
+{% endblock %}

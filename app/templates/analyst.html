@@ -1,0 +1,190 @@
+{% extends "base.html" %}
+{% block title %}{{ d.realtime.name or d.code }} ({{ d.code }}) - Finance Agent{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>{{ d.realtime.name or d.code }} <span class="dim" style="font-weight:normal; font-size:16px;">{{ d.code }}</span></h1>
+    <span class="page-sub"><a href="/analyst">← 换一只</a></span>
+</div>
+
+{% if d.error %}
+<div class="error-banner">⚠️ {{ d.error }}</div>
+{% endif %}
+
+<div class="cards-row">
+    {% set cp = d.realtime.change_pct %}
+    {% set price = d.realtime.price %}
+    <div class="card">
+        <div class="label">现价</div>
+        <div class="value {{ 'up' if cp and cp > 0 else 'down' if cp and cp < 0 else '' }}">{{ price if price else '—' }}</div>
+    </div>
+    <div class="card">
+        <div class="label">涨跌幅</div>
+        <div class="value {{ 'up' if cp and cp > 0 else 'down' if cp and cp < 0 else '' }}">{{ '%+.2f' % cp if cp is number else '—' }}%</div>
+    </div>
+    <div class="card">
+        <div class="label">PE(TTM)</div>
+        <div class="value dim">{{ '%.1f' % d.realtime.pe_ttm if d.realtime.pe_ttm is number else '—' }}</div>
+    </div>
+    <div class="card">
+        <div class="label">PB</div>
+        <div class="value dim">{{ '%.2f' % d.realtime.pb if d.realtime.pb is number else '—' }}</div>
+    </div>
+    <div class="card">
+        <div class="label">市值(亿)</div>
+        <div class="value dim">{{ '%.0f' % d.realtime.mcap_yi if d.realtime.mcap_yi is number else '—' }}</div>
+    </div>
+    <div class="card">
+        <div class="label">换手率</div>
+        <div class="value dim">{{ '%.2f' % d.realtime.turnover_pct if d.realtime.turnover_pct is number else '—' }}%</div>
+    </div>
+</div>
+
+{% if d.on_top_list %}
+<div class="card highlight">
+    <strong>🐲 龙虎榜上榜</strong> · {{ d.top_list_reason }}
+</div>
+{% endif %}
+
+<h2>K线图</h2>
+<div class="toolbar" style="margin-bottom:10px;">
+    {% set current_scale = scale or '240' %}
+    <a class="btn-ghost {{ 'active' if current_scale=='5' else '' }}" href="/analyst/{{ d.code }}?scale=5" style="{{ 'border-color:var(--accent);color:var(--accent);' if current_scale=='5' else '' }}">5分</a>
+    <a class="btn-ghost {{ 'active' if current_scale=='15' else '' }}" href="/analyst/{{ d.code }}?scale=15" style="{{ 'border-color:var(--accent);color:var(--accent);' if current_scale=='15' else '' }}">15分</a>
+    <a class="btn-ghost {{ 'active' if current_scale=='30' else '' }}" href="/analyst/{{ d.code }}?scale=30" style="{{ 'border-color:var(--accent);color:var(--accent);' if current_scale=='30' else '' }}">30分</a>
+    <a class="btn-ghost {{ 'active' if current_scale=='60' else '' }}" href="/analyst/{{ d.code }}?scale=60" style="{{ 'border-color:var(--accent);color:var(--accent);' if current_scale=='60' else '' }}">60分</a>
+    <a class="btn-ghost {{ 'active' if current_scale=='240' else '' }}" href="/analyst/{{ d.code }}?scale=240" style="{{ 'border-color:var(--accent);color:var(--accent);' if current_scale=='240' else '' }}">日K</a>
+    <a class="btn-ghost {{ 'active' if current_scale=='1680' else '' }}" href="/analyst/{{ d.code }}?scale=1680" style="{{ 'border-color:var(--accent);color:var(--accent);' if current_scale=='1680' else '' }}">周K</a>
+    <span class="dim" style="margin-left:auto; font-size:12px;">含 MA5/10/20(百度源时)· 点击切换周期</span>
+</div>
+<div id="kline-chart" style="width:100%; height:480px; background:var(--bg-elevated); border-radius:6px;"></div>
+<div style="margin-top:8px;" class="dim">
+    <label style="margin-right:12px;"><input type="checkbox" id="toggle-ma" checked> 均线 MA5/10/20</label>
+    <label><input type="checkbox" id="toggle-vol" checked> 成交量</label>
+</div>
+
+<h2>资金流向</h2>
+{% set mn = d.money_flow.main_net if d.money_flow else none %}
+{% set all_zero = d.money_flow and (d.money_flow.main_net == 0 and d.money_flow.super_large == 0 and d.money_flow.large == 0) %}
+{% if all_zero %}
+<div class="card">
+    <p class="dim">⚠️ 资金流数据暂不可用(东财 push2 接口可能被风控断连)。</p>
+    <p class="dim">主力净流入等字段需东财数据源,当前网络环境访问受限。其它行情/K线数据正常。</p>
+</div>
+{% else %}
+<table>
+    <thead><tr><th>主力净流入</th><th class="num">超大单</th><th class="num">大单</th><th class="num">中单</th><th class="num">小单</th></tr></thead>
+    <tbody><tr>
+        <td class="{{ 'up' if mn and mn > 0 else 'down' if mn and mn < 0 else '' }}">{{ "{:,.0f}".format(mn) if mn is number else '0' }}</td>
+        <td class="num">{{ "{:,.0f}".format(d.money_flow.super_large) if d.money_flow.super_large is number else '0' }}</td>
+        <td class="num">{{ "{:,.0f}".format(d.money_flow.large) if d.money_flow.large is number else '0' }}</td>
+        <td class="num">{{ "{:,.0f}".format(d.money_flow.medium) if d.money_flow.medium is number else '0' }}</td>
+        <td class="num">{{ "{:,.0f}".format(d.money_flow.small) if d.money_flow.small is number else '0' }}</td>
+    </tr></tbody>
+</table>
+{% endif %}
+
+<h2>分时量能分析</h2>
+<div class="card">
+    {% if d.minute_analysis %}
+    <pre>{{ d.minute_analysis | tojson(indent=2) }}</pre>
+    {% else %}
+    <p class="dim">无分时数据(可能非交易时段,或数据源未返回)</p>
+    {% endif %}
+</div>
+
+<h2>📰 公司公告</h2>
+<p class="dim" style="font-size:12px; margin: -4px 0 8px;">💡 点击公告标题查看正文详情</p>
+<table>
+    <thead><tr><th>日期</th><th>公告标题</th></tr></thead>
+    <tbody>
+    {% for a in d.announcements %}
+    <tr>
+        <td class="dim" style="white-space:nowrap;">{{ a.notice_date }}</td>
+        <td>
+            <a href="javascript:void(0)" class="ann-toggle" data-code="{{ a.art_code }}" style="color: var(--accent); text-decoration: none; cursor: pointer;">{{ a.title }}</a>
+        </td>
+    </tr>
+    <tr class="ann-detail-row" id="ann-detail-{{ a.art_code }}" style="display:none;">
+        <td colspan="2" style="padding: 0; border-top: none;">
+            <div class="ann-detail-box" style="margin: 4px 0; padding: 12px 14px; background: var(--bg-alt); border-left: 3px solid var(--accent); border-radius: 4px;">
+                <div class="dim" style="font-size:12px;">加载中...</div>
+            </div>
+        </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="2" class="empty-state" style="padding:16px;">暂无公告(数据源未返回)</td></tr>
+    {% endfor %}
+    </tbody>
+</table>
+<script>
+(function() {
+    var loaded = {};
+    document.querySelectorAll('.ann-toggle').forEach(function(btn) {
+        btn.addEventListener('click', async function() {
+            var code = btn.dataset.code;
+            var row = document.getElementById('ann-detail-' + code);
+            var box = row.querySelector('.ann-detail-box');
+            if (row.style.display === 'none') {
+                row.style.display = '';
+                btn.textContent = btn.textContent.replace(/ ▼?$/, ' ▼');
+                if (!loaded[code]) {
+                    loaded[code] = true;
+                    try {
+                        var resp = await fetch('/api/announcement/' + code);
+                        var d = await resp.json();
+                        if (d.error) {
+                            box.innerHTML = '<div class="dim" style="font-size:12px; color: var(--down);">⚠ ' + d.error + '</div>';
+                        } else {
+                            var html = '<div style="font-size:11px; color: var(--dim); margin-bottom:8px;">' + (d.date || '') + '</div>';
+                            html += '<div style="font-size:11px; color: var(--dim); margin-bottom:8px; white-space: pre-wrap; line-height:1.7;">' + (d.content || '无正文').replace(/</g,'&lt;') + '</div>';
+                            if (d.attach_url) {
+                                html += '<a href="' + d.attach_url + '" target="_blank" style="font-size:12px; color: var(--down);">📄 下载 PDF 原文</a>';
+                            }
+                            box.innerHTML = html;
+                        }
+                    } catch (e) {
+                        box.innerHTML = '<div class="dim" style="font-size:12px; color: var(--down);">⚠ 加载失败</div>';
+                        loaded[code] = false;
+                    }
+                }
+            } else {
+                row.style.display = 'none';
+                btn.textContent = btn.textContent.replace(/ ▼?$/, '');
+            }
+        });
+    });
+})();
+</script>
+
+<h2>AI 多维度解读</h2>
+<div class="card">
+    {% if interpretation %}
+    <div class="ai-result">{{ interpretation }}</div>
+    {% else %}
+    <form method="post" action="/analyst/{{ d.code }}/interpret">
+        <p class="dim">并行分析 3 个维度(量价技术面 / 资金面游资 / 基本面估值),约需 10-20 秒。</p>
+        <button type="submit">🤖 生成 AI 多维度解读</button>
+    </form>
+    {% endif %}
+</div>
+
+<h2>AI 加购建议</h2>
+<div class="card">
+    {% if advice %}
+    <div class="ai-result">{{ advice }}</div>
+    {% else %}
+    <form method="post" action="/analyst/{{ d.code }}/advice">
+        <p class="dim">结合你的账户(持仓/仓位/集中度)+ 该股分析,给出明确的 加仓/持有/减仓 建议 + 止损止盈价。约 5-10 秒。</p>
+        <button type="submit">🎯 生成 AI 加购建议</button>
+    </form>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+<script>
+const klineData = {{ d.kline | tojson }};
+</script>
+<script src="/static/app.js"></script>
+{% endblock %}

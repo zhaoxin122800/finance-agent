@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}{{ title }} - Finance Agent{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>{{ title }}</h1>
+    <span class="page-sub">即将上线</span>
+</div>
+
+<div class="empty-state">
+    <div class="icon">{{ icon | default('🚧') }}</div>
+    <div style="font-size:15px; color:var(--text); margin-bottom:6px;">「{{ title }}」正在开发中</div>
+    <div class="dim" style="max-width:420px; margin:0 auto;">本面板将在后续里程碑实现。当前可用的功能见首页导航。</div>
+    <div style="margin-top:20px;">
+        <a href="/" class="btn btn-ghost">← 返回首页</a>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}风险预警 - Finance Agent{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>风险预警</h1>
+    <span class="page-sub">扫描自选股规则触发 · 阈值在自选股页设置</span>
+</div>
+
+{% if alerts %}
+<div class="error-banner">⚠️ 当前 {{ alerts | length }} 条预警,请关注。</div>
+{% endif %}
+
+<table>
+    <thead><tr><th>代码</th><th>名称</th><th class="num">现价</th><th class="num">涨跌幅</th><th>触发规则</th><th>时间</th></tr></thead>
+    <tbody>
+    {% for a in alerts %}
+    <tr class="alert-row">
+        <td><a href="/analyst/{{ a.code }}">{{ a.code }}</a></td>
+        <td>{{ a.name }}</td>
+        <td class="num">{{ a.price if a.price else '—' }}</td>
+        <td class="num {{ 'up' if a.change_pct and a.change_pct > 0 else 'down' if a.change_pct and a.change_pct < 0 else '' }}">{{ "{:+.2f}".format(a.change_pct) if a.change_pct is number else '—' }}%</td>
+        <td>
+            {% for r in a.rules %}
+            <span class="highlight-badge" style="margin:2px;">{{ r }}</span>
+            {% endfor %}
+        </td>
+        <td class="dim">{{ a.time or '—' }}</td>
+    </tr>
+    {% else %}
+    <tr><td colspan="6" class="empty-state" style="padding:40px;">
+        ✅ 暂无预警。规则在自选股页设置涨跌阈值后生效:<br>
+        <span class="dim">up_threshold/down_threshold=涨跌幅超阈值 · volume_spike=放量2倍 · ma_break=跌破20日均线</span>
+    </td></tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}个股分析 - Finance Agent{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>个股分析</h1>
+    <span class="page-sub">输入代码查看 K线 / 量能 / 资金流</span>
+</div>
+
+<form class="card" onsubmit="go(); return false;" style="display:flex; gap:8px; align-items:center;">
+    <label class="dim">股票代码</label>
+    <input id="code-input" placeholder="如 600789 / 300750 / 000001" required autofocus style="width:220px;">
+    <button type="submit">分析</button>
+</form>
+<div class="card" style="margin-top:12px;">
+    <p class="dim">常用代码:<a href="/analyst/600519">600519 贵州茅台</a> · <a href="/analyst/000001">000001 平安银行</a> · <a href="/analyst/300750">300750 宁德时代</a></p>
+</div>
+<script>
+function go() {
+    const code = document.getElementById('code-input').value.trim();
+    if (code) window.location.href = '/analyst/' + code;
+}
+</script>
+{% endblock %}

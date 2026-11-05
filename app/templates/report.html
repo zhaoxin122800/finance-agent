@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}研报提炼 - Finance Agent{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>研报提炼</h1>
+    <span class="page-sub">文本 / URL / PDF → 评级 / 目标价 / 核心逻辑</span>
+</div>
+
+<div class="toolbar">
+    <form method="post" action="/report/api/extract" style="display:flex; flex-direction:column; gap:8px; width:100%;">
+        <textarea name="text" rows="5" placeholder="粘贴研报全文..." style="width:100%;"></textarea>
+        <button type="submit" style="align-self:flex-start;">提炼文本</button>
+    </form>
+</div>
+
+<div class="toolbar">
+    <form method="post" action="/report/api/extract_url" style="display:flex; gap:8px; width:100%;">
+        <input name="url" placeholder="研报网页 URL(如 https://...)" style="flex:1;">
+        <button type="submit">提炼 URL</button>
+    </form>
+</div>
+
+<div class="toolbar">
+    <form method="post" action="/report/api/extract_pdf" enctype="multipart/form-data" style="display:flex; gap:8px; align-items:center; width:100%;">
+        <input type="file" name="file" accept=".pdf" style="flex:1;">
+        <button type="submit">提炼 PDF</button>
+    </form>
+    <p class="dim" style="margin-top:6px;">PDF 提炼需先安装 pdfplumber:<code>uv pip install pdfplumber</code> 或 <code>uv sync --extra pdf</code></p>
+</div>
+
+{% if result %}
+<h2>提炼结果</h2>
+<div class="card">
+    {% if result.error %}
+    <p class="error-banner">⚠️ {{ result.error }}</p>
+    {% else %}
+    <p><strong>标题:</strong> {{ result.title or '—' }}</p>
+    <p><strong>机构:</strong> {{ result.institution or '—' }} | <strong>分析师:</strong> {{ result.analyst or '—' }}</p>
+    <p><strong>评级:</strong> <span class="up">{{ result.rating or '—' }}</span> | <strong>目标价:</strong> {{ result.target_price or '—' }} | <strong>现价:</strong> {{ result.current_price or '—' }} | <strong>上行空间:</strong> {{ result.upside or '—' }}</p>
+    {% if result.core_logic %}
+    <p style="margin-top:12px;"><strong>核心逻辑:</strong></p>
+    <ul>{% for l in result.core_logic %}<li>{{ l }}</li>{% endfor %}</ul>
+    {% endif %}
+    {% if result.risks %}
+    <p style="margin-top:12px;"><strong>风险提示:</strong></p>
+    <ul>{% for r in result.risks %}<li>{{ r }}</li>{% endfor %}</ul>
+    {% endif %}
+    {% if result.sectors %}
+    <p style="margin-top:12px;"><strong>板块:</strong> {{ result.sectors | join(', ') }}</p>
+    {% endif %}
+    {% endif %}
+</div>
+{% endif %}
+
+<h2>提炼历史</h2>
+<table>
+    <thead><tr><th>时间</th><th>标题</th><th>评级</th><th>目标价</th></tr></thead>
+    <tbody>
+    {% for h in history %}
+    <tr>
+        <td class="dim">{{ h.extracted_at[:19] if h.extracted_at else '—' }}</td>
+        <td>{{ h.title or '—' }}</td>
+        <td class="{{ 'up' if h.rating else '' }}">{{ h.rating or '—' }}</td>
+        <td class="num">{{ h.target_price or '—' }}</td>
+    </tr>
+    {% else %}
+    <tr><td colspan="4" class="empty-state" style="padding:24px;">暂无提炼历史。</td></tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

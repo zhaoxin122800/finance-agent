@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}虚拟账户 - Finance Agent{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>虚拟账户</h1>
+    <span class="page-sub">1000 元模拟资金 · A 股规则(T+1/涨跌停/100 股整数倍)</span>
+</div>
+
+<div class="cards-row">
+    <div class="card"><div class="label">总资产</div><div class="value">{{ "{:.2f}".format(view.total_assets) if view.total_assets is number else '—' }}</div></div>
+    <div class="card"><div class="label">现金</div><div class="value">{{ "{:.2f}".format(view.cash) if view.cash is number else '—' }}</div></div>
+    <div class="card"><div class="label">持仓市值</div><div class="value">{{ "{:.2f}".format(view.market_value) if view.market_value is number else '—' }}</div></div>
+    <div class="card"><div class="label">总盈亏</div><div class="value {{ 'up' if view.total_pnl and view.total_pnl > 0 else 'down' if view.total_pnl and view.total_pnl < 0 else '' }}">{{ "{:+.2f}".format(view.total_pnl) if view.total_pnl is number else '—' }}</div></div>
+</div>
+
+<h2>交易</h2>
+<div class="toolbar" id="buy-form">
+    <form method="post" action="/account/api/buy" style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+        <input name="code" id="buy-code" placeholder="代码" required style="width:120px;">
+        <input name="qty" id="buy-qty" type="number" step="100" placeholder="数量(100整数倍)" style="width:150px;">
+        <input name="amount" id="buy-amount" type="number" step="0.01" placeholder="或金额" style="width:120px;">
+        <button type="submit">买入</button>
+    </form>
+</div>
+<div class="toolbar" id="sell-form">
+    <form method="post" action="/account/api/sell" style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+        <input name="code" id="sell-code" placeholder="代码" required style="width:120px;">
+        <input name="qty" id="sell-qty" type="number" placeholder="数量" style="width:120px;">
+        <label class="dim"><input type="checkbox" name="all" value="true"> 全部清仓</label>
+        <button type="submit" class="btn-danger">卖出</button>
+    </form>
+</div>
+
+<h2>持仓</h2>
+<table>
+    <thead><tr><th>代码</th><th>名称</th><th class="num">数量</th><th class="num">成本</th><th class="num">现价</th><th class="num">市值</th><th class="num">盈亏</th><th>操作</th></tr></thead>
+    <tbody>
+    {% for p in view.positions %}
+    <tr>
+        <td><a href="/analyst/{{ p.code }}">{{ p.code }}</a></td>
+        <td>{{ p.name }}</td>
+        <td class="num">{{ p.qty }}</td>
+        <td class="num">{{ "{:.3f}".format(p.cost_price) if p.cost_price is number else '—' }}</td>
+        <td class="num">{{ p.price if p.price else '—' }}</td>
+        <td class="num">{{ "{:.2f}".format(p.market_value) if p.market_value is number else '—' }}</td>
+        <td class="num {{ 'up' if p.pnl and p.pnl > 0 else 'down' if p.pnl and p.pnl < 0 else '' }}">{{ "{:+.2f}".format(p.pnl) if p.pnl is number else '—' }} ({{ "{:.2f}".format(p.pnl_pct) if p.pnl_pct is number else '—' }}%)</td>
+        <td class="ops">
+            <button type="button" class="btn-mini" onclick="quickFill('buy','{{ p.code }}')">加仓</button>
+            <button type="button" class="btn-mini btn-danger" onclick="quickFill('sell','{{ p.code }}')">卖出</button>
+        </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="8" class="empty-state" style="padding:24px;">空仓,用上方表单买入。</td></tr>
+    {% endfor %}
+    </tbody>
+</table>
+<script>
+function quickFill(action, code) {
+    var codeField = document.getElementById(action + '-code');
+    var qtyField = document.getElementById(action + '-qty');
+    codeField.value = code;
+    var form = document.getElementById(action + '-form');
+    form.scrollIntoView({behavior: 'smooth', block: 'center'});
+    codeField.style.transition = 'background 0.3s';
+    codeField.style.background = 'var(--accent)';
+    setTimeout(function(){ codeField.style.background = ''; }, 600);
+    qtyField.focus();
+}
+</script>
+
+<h2>交易历史</h2>
+<table>
+    <thead><tr><th>时间</th><th>类型</th><th>代码</th><th>名称</th><th class="num">价格</th><th class="num">数量</th><th class="num">金额</th><th class="num">手续费</th></tr></thead>
+    <tbody>
+    {% for t in history %}
+    <tr>
+        <td>{{ t.time[:19] if t.time else '—' }}</td>
+        <td class="{{ 'up' if t.type == 'buy' else 'down' }}">{{ '买入' if t.type == 'buy' else '卖出' }}</td>
+        <td>{{ t.code }}</td>
+        <td>{{ t.name or '—' }}</td>
+        <td class="num">{{ "{:.2f}".format(t.price) if t.price is number else '—' }}</td>
+        <td class="num">{{ t.qty if t.qty is defined else '—' }}</td>
+        <td class="num">{{ "{:.2f}".format(t.amount) if t.amount is number else '—' }}</td>
+        <td class="num dim">{{ "{:.2f}".format(t.fee) if t.fee is number else '—' }}</td>
+    </tr>
+    {% else %}
+    <tr><td colspan="8" class="empty-state" style="padding:24px;">暂无交易记录。</td></tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block title %}策略回测 - Finance Agent{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>策略回测</h1>
+    <span class="page-sub">加摩擦(佣金 0.025% + 印花税 0.1%)· 找最容易崩的</span>
+</div>
+
+<div class="toolbar">
+    <form method="post" action="/backtest/run" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; width:100%;">
+        <input name="code" placeholder="股票代码 如 600519" required value="{{ code or '' }}" style="width:160px;">
+        <select name="strategy">
+            {% for s in strategies %}<option value="{{ s }}" {{ 'selected' if s == strategy else '' }}>{{ s }}</option>{% endfor %}
+        </select>
+        <input name="start" type="date" required value="{{ start or '' }}" style="width:150px;">
+        <span class="dim">至</span>
+        <input name="end" type="date" required value="{{ end or '' }}" style="width:150px;">
+        <button type="submit">运行回测</button>
+    </form>
+</div>
+
+{% if result %}
+<h2>回测结果</h2>
+{% if result.error %}
+<div class="error-banner">⚠️ {{ result.error }}</div>
+{% else %}
+<div class="cards-row">
+    <div class="card"><div class="label">总收益</div><div class="value {{ 'up' if result.total_return_pct > 0 else 'down' }}">{{ "{:+.2f}".format(result.total_return_pct) }}%</div></div>
+    <div class="card"><div class="label">最大回撤</div><div class="value down">{{ result.max_drawdown_pct }}%</div></div>
+    <div class="card"><div class="label">夏普</div><div class="value">{{ result.sharpe }}</div></div>
+    <div class="card"><div class="label">胜率</div><div class="value">{{ result.win_rate }}%</div></div>
+    <div class="card"><div class="label">手续费</div><div class="value dim">{{ result.commission_paid }}</div></div>
+</div>
+<div id="equity-chart" style="width:100%; height:300px; background:var(--bg-elevated); border-radius:6px; margin:12px 0;" data-curve='{{ result.equity_curve | tojson }}'></div>
+<h3>交易明细({{ result.trades | length }} 笔)</h3>
+<table>
+    <thead><tr><th>日期</th><th>动作</th><th class="num">价格</th><th class="num">数量</th><th class="num">手续费</th></tr></thead>
+    <tbody>
+    {% for t in result.trades %}
+    <tr>
+        <td>{{ t.date }}</td>
+        <td class="{{ 'up' if t.action == 'buy' else 'down' }}">{{ '买入' if t.action == 'buy' else '卖出' }}</td>
+        <td class="num">{{ t.price }}</td>
+        <td class="num">{{ t.qty }}</td>
+        <td class="num dim">{{ t.fee }}</td>
+    </tr>
+    {% else %}
+    <tr><td colspan="5" class="empty-state" style="padding:20px;">该策略在选定区间无交易信号。</td></tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% endif %}
+{% else %}
+<div class="card">
+    <p class="dim">选择策略和日期区间,运行回测查看收益曲线、最大回撤、夏普比率。</p>
+    <p class="dim" style="margin-top:8px;">内置策略:<strong>ma_cross</strong>(均线交叉)/ <strong>volume_breakout</strong>(放量突破)/ <strong>top_list_follow</strong>(异动跟随:涨幅≥7%+放量买入,持有3天或止损-5%)</p>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{% if result and result.equity_curve %}
+<script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+<script>
+const ec = document.getElementById('equity-chart');
+if (ec && ec.dataset.curve && typeof LightweightCharts !== 'undefined') {
+    const curve = JSON.parse(ec.dataset.curve);
+    if (curve.length) {
+        const chart = LightweightCharts.createChart(ec, {
+            width: ec.clientWidth, height: 300,
+            layout: { background: { color: '#161b22' }, textColor: '#c9d1d9', fontSize: 12 },
+            grid: { vertLines: { color: '#21262d' }, horzLines: { color: '#21262d' } },
+            rightPriceScale: { borderColor: '#30363d' },
+            timeScale: { borderColor: '#30363d', textColor: '#e6edf3', fontSize: 12 },
+        });
+        const line = chart.addLineSeries({ color: '#58a6ff', lineWidth: 2 });
+        line.setData(curve.map(p => ({ time: p.date, value: p.equity })));
+        chart.timeScale().fitContent();
+        new ResizeObserver(() => chart.applyOptions({ width: ec.clientWidth })).observe(ec);
+    }
+}
+</script>
+{% endif %}
+{% endblock %}
