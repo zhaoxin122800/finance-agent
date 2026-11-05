@@ -1,3 +1,7 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 Simon Lin
+# Extracted from simonlin1212/a-stock-data; locally adapted for optional dependencies.
+# See THIRD_PARTY_NOTICES.md and LICENSES/a-stock-data-LICENSE.txt.
 """
 vendors/a_stock_data.py —— A 股全栈数据工具包 V3.2.3
 

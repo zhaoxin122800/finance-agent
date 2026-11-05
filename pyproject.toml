@@ -3,6 +3,7 @@ name = "finance-agent"
 version = "0.1.0"
 description = "自用本地 Web 金融助手 — 整合 A 股数据/分析/模拟交易/AI 解读"
 requires-python = ">=3.10"
+license = { file = "LICENSE" }
 dependencies = [
     "fastapi>=0.110",
     "uvicorn[standard]>=0.27",

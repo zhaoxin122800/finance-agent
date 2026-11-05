@@ -25,6 +25,12 @@ data/
 # 密钥与本地配置
 .env
 .env.local
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
 
 # 编辑器 / 系统
 .vscode/

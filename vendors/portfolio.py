@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT-0
+# Author: CNyezi; ClawHub a-stock-analysis 1.0.0.
+# See THIRD_PARTY_NOTICES.md and LICENSES/MIT-0.txt.
 # /// script
 # requires-python = ">=3.10"
 # dependencies = []

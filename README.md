@@ -135,7 +135,7 @@ uv sync --extra data-premium
 ```
 finance-agent/
 ├── app/            # FastAPI 应用（routes/services/ai/datasources/templates）
-├── vendors/        # 原样复用的 Python 资产（不改）
+├── vendors/        # 外部脚本与本地创建的适配代码、知识资料
 ├── data/           # 运行时状态（gitignore，自动生成）
 ├── docs/           # 设计文档
 └── tests/          # 测试
@@ -170,5 +170,9 @@ uv run pytest
 
 ## 代码来源
 
-vendors 中包含复用的外部脚本和知识资料，来源记录见 THIRD_PARTY_NOTICES.md。
-当前仓库尚未设置统一开源许可证，第三方文件的授权范围需要分别核实。
+项目自身代码采用 [Apache-2.0](LICENSE)。第三方文件保留各自许可证，具体来源与授权范围见 [代码来源与第三方授权](THIRD_PARTY_NOTICES.md)。归属声明见 [NOTICE](NOTICE)，完整许可文本见 LICENSES 目录。
+
+
+## 授权与密钥检查
+
+授权来源、扫描范围与处理结果见 [检查记录](docs/security-license-audit-2026-11-05.md)。

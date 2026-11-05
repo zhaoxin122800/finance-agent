@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: Apache-2.0 AND MIT-0
+# Local AI-assisted adapter; includes a-stock-analysis-derived portions (CNyezi, MIT-0).
+# See THIRD_PARTY_NOTICES.md.
 # /// script
 # requires-python = ">=3.10"
 # dependencies = []

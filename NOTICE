@@ -1,0 +1,25 @@
+Finance Agent
+Copyright 2026 赵鑫 (GitHub: zhaoxin122800)
+
+Project-authored code and locally AI-assisted materials are provided under
+the Apache License, Version 2.0. Third-party files retain their own terms
+as described in THIRD_PARTY_NOTICES.md and LICENSES/.
+
+a-stock-data
+Copyright 2026 Simon Lin
+https://github.com/simonlin1212/a-stock-data
+Licensed under Apache-2.0. The extracted Python adapter has local changes.
+
+a-stock-analysis
+CNyezi
+https://clawhub.ai/cnyezi/skills/a-stock-analysis
+Licensed under MIT-0. See LICENSES/MIT-0.txt.
+
+Backtest Expert methodology
+Copyright (c) 2026 TraderMonty
+https://github.com/tradermonty/claude-trading-skills
+Licensed under MIT. See LICENSES/backtest-expert-MIT.txt.
+
+TradingView Lightweight Charts™
+Copyright (с) 2023 TradingView, Inc. https://www.tradingview.com/
+See LICENSES/Lightweight-Charts-NOTICE.txt and LICENSES/Apache-2.0.txt.
